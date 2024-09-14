@@ -1,16 +1,16 @@
-use std::{borrow::Cow, collections::HashMap};
+use std::{ borrow::Cow };
 
 use crate::{Guesser, Guess, Correctness, DICTIONARY};
 
 
 pub struct Naive {
-    remaining: HashMap<&'static str, usize>,
+    remaining: Vec<(&'static str, usize)>,
 }
 
 impl Naive {
     pub fn new() -> Self {
         Naive {
-            remaining: HashMap::from_iter(
+            remaining: Vec::from_iter(
                 DICTIONARY.lines().map(|line| {
                     let (word, count) = line
                         .split_once(" ")
@@ -36,17 +36,17 @@ impl Guesser for Naive {
     // The implmentation of the algorithm
     fn guess(&mut self, history: &[Guess]) -> String {
         if let Some(last) = history.last() {
-            self.remaining.retain(|word, _| last.matches(word));
+            self.remaining.retain(|(word, _)| last.matches(word));
         }
         
         if history.is_empty() {
             return "tares".to_string();
         }
 
-        let remaining_count: usize = self.remaining.iter().map(|(_, &c)| c).sum();
+        let remaining_count: usize = self.remaining.iter().map(|&(_, c)| c).sum();
 
         let mut best: Option<Candidate> = None;
-        for (&word, &count) in &self.remaining {
+        for &(word, count) in &self.remaining {
             
             let mut sum = 0.0;
             // Goodness = -sum_i p_i * log_2(p_i)
