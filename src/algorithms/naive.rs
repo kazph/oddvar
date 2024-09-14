@@ -1,10 +1,10 @@
 use std::{ borrow::Cow };
 
-use crate::{Guesser, Guess, Correctness, DICTIONARY};
+use crate::{Guesser, Guess, Correctness, DICTIONARY, Word};
 
 
 pub struct Naive {
-    remaining: Vec<(&'static str, usize)>,
+    remaining: Vec<(&'static Word, usize)>,
 }
 
 impl Naive {
@@ -18,7 +18,7 @@ impl Naive {
 
                     let count: usize = count.parse().expect("Count is a number");
 
-                    return (word, count);
+                    return (word.as_bytes().try_into().expect("Every dict word is five characters!"), count);
                 })
             )
         }
@@ -27,20 +27,20 @@ impl Naive {
 
 #[derive(Debug, Copy, Clone)]
 struct Candidate {
-    word: &'static str,
+    word: &'static Word,
     goodness: f64,
 }
 
 impl Guesser for Naive {
     
     // The implmentation of the algorithm
-    fn guess(&mut self, history: &[Guess]) -> String {
+    fn guess(&mut self, history: &[Guess]) -> Word {
         if let Some(last) = history.last() {
             self.remaining.retain(|(word, _)| last.matches(word));
         }
         
         if history.is_empty() {
-            return "tares".to_string();
+            return *b"tares";
         }
 
         let remaining_count: usize = self.remaining.iter().map(|&(_, c)| c).sum();
@@ -87,6 +87,6 @@ impl Guesser for Naive {
             }
         }
 
-        return best.unwrap().word.to_string();
+        return *best.unwrap().word;
     }
 }
