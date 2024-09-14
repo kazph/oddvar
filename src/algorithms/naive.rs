@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{borrow::Cow, collections::HashMap};
 
 use crate::{Guesser, Guess, Correctness, DICTIONARY};
 
@@ -58,7 +58,7 @@ impl Guesser for Naive {
 
                 for (candidate, count) in &self.remaining {
                     let g = Guess {
-                        word: word.to_string(),
+                        word: Cow::Borrowed(word),
                         mask: pattern,
                     };
 
@@ -80,11 +80,9 @@ impl Guesser for Naive {
             
             if let Some(c) = best {
                 if goodness > c.goodness {
-                    eprintln!("{} is better then {} ({} > {})", word, c.word, goodness, c.goodness);
                     best = Some(Candidate { word, goodness })
                 }
             } else {
-                eprintln!("starting with {} (goodness: {})", word, goodness);
                 best = Some(Candidate {word, goodness })
             }
         }
