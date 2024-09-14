@@ -7,6 +7,10 @@ fn main() {
 
     for answer in GAMES.split_whitespace() {
         let guesser = oddvar::algorithms::Naive::new();
-        w.play(answer, guesser);
+        if let Some(s) = w.play(answer, guesser) {
+            println!("Guessed {} in {}", answer, s);
+        } else {
+            eprintln!("failed to guess!");
+        }
     }
 }

@@ -90,12 +90,31 @@ impl Correctness {
 
         return c;
     }
+
+
+    pub fn patterns() -> impl Iterator<Item = [Self; 5]> {
+        itertools::iproduct!(
+            [Self::Correct, Self::Misplaced, Self::Wrong],
+            [Self::Correct, Self::Misplaced, Self::Wrong],
+            [Self::Correct, Self::Misplaced, Self::Wrong],
+            [Self::Correct, Self::Misplaced, Self::Wrong],
+            [Self::Correct, Self::Misplaced, Self::Wrong]
+        )
+        .map(|(a, b, c, d, e)| [a, b, c, d, e])
+    }
 }
 
 pub struct Guess {
     pub word: String,
     pub mask: [Correctness; 5],
 }
+
+impl Guess {
+    pub fn matches(&self, word: &str) -> bool {
+        Correctness::compute(word, &self.word) == self.mask
+    }
+}
+
 
 pub trait Guesser {
     fn guess(&mut self, history: &[Guess]) -> String;
@@ -160,5 +179,8 @@ mod tests {
         let w = Wordle::new();
         let guesser = guesser!(|_history| { "right".to_string() });
         assert_eq!(w.play("right", guesser), Some(1));
+
+        let guesser = guesser!(|_history| { "right".to_string() });
+        assert_eq!(w.play("wrong", guesser), None);
     }
 }
