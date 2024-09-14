@@ -36,8 +36,37 @@ impl Correctness {
         assert_eq!(guess.len(), 5);
 
         let mut c = [Correctness::Wrong; 5];
+        
+        // Mark things as correct
+        for (i, (a, g)) in answer.chars().zip(guess.chars()).enumerate() {
+            if a == g {
+                c[i] = Correctness::Correct;
+            }
+        }
 
+        // mark things as misplaced
+        let mut marked = [false; 5];
+        for (i, &c) in c.iter().enumerate() {
+            if c == Correctness::Correct {
+                marked[i] = true;
+            }
+        }
 
+        for (i, g) in guess.chars().enumerate() {
+            if c[i] == Correctness::Correct {
+                continue;
+            }
+
+            if answer.chars().enumerate().any(|(i, a)| {
+                if a == g && !marked[i] {
+                    marked[i] = true;
+                    return true
+                }
+                return false;
+            }) {
+                c[i] = Correctness::Misplaced;
+            }
+        }
 
         return c;
     }
@@ -50,4 +79,39 @@ pub struct Guess {
 
 pub trait Guesser {
     fn guess(&mut self, history: &[Guess]) -> String;
+}
+
+#[cfg(test)]
+macro_rules! mask {
+    (C) => {$crate::Correctness::Correct};
+    (M) => {$crate::Correctness::Misplaced};
+    (W) => {$crate::Correctness::Wrong};
+    ($($c:tt)+) => {[
+        $(mask!($c)),+
+    ]}
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::Correctness;
+
+    macro_rules! check {
+        (C) => {Correctness::Correct};
+        (M) => {Correctness::Misplaced};
+        (W) => {Correctness::Wrong};
+        ([$(tt)+]) => [
+
+        ]
+    }
+
+    #[test]
+    fn compute() {
+        assert_eq!(Correctness::compute("abcde", "abcde"), mask![C C C C C]);
+        assert_eq!(Correctness::compute("abcde", "bcdea"), mask![M M M M M]);
+        assert_eq!(Correctness::compute("abcde", "fghij"), mask![W W W W W]);
+        assert_eq!(Correctness::compute("aabcd", "baddd"), mask![M C W W C]);
+        assert_eq!(Correctness::compute("azzaz", "aaabb"), mask![C M W W W]);
+        assert_eq!(Correctness::compute("kasph", "simba"), mask![M W W W M]);
+        assert_eq!(Correctness::compute("baccc", "aaddd"), mask![W C W W W]);
+    }
 }
