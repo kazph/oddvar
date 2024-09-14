@@ -1,24 +1,44 @@
+use std::collections::HashSet;
+
 pub mod algorithms;
 
-pub fn play<G: Guesser>(answer: &'static str, mut guesser: G) -> Option<i32> {
-    let mut history = Vec::new();
+pub const DICTIONARY: &str = include_str!("./../resources/dictionary.txt");
 
-    // not limiting number of guesess to get full distribution in the tail
-    for i in 1..=64 { 
-        let guess = guesser.guess(&history);
+pub struct Wordle {
+    dictonary: HashSet<&'static str>, // Known at compile time, TOOD: could use perfect hash with build script!
+}
 
-        if guess == answer {
-            return Some(i);
+impl Wordle {
+    pub fn new() -> Self {
+        Self {
+            dictonary: HashSet::from_iter(
+                DICTIONARY.split_whitespace().step_by(2)
+            )
         }
-
-        let correctness = Correctness::compute(answer, &guess);
-        history.push(Guess {
-            mask: correctness,
-            word: guess
-        })
     }
 
-    None
+    pub fn play<G: Guesser>(&self, answer: &'static str, mut guesser: G) -> Option<i32> {
+        let mut history = Vec::new();
+
+        // not limiting number of guesess to get full distribution in the tail
+        for i in 1..=64 { 
+            let guess = guesser.guess(&history);
+
+            if guess == answer {
+                return Some(i);
+            }
+
+            /*debug_*/assert!(self.dictonary.contains(&*guess));
+
+            let correctness = Correctness::compute(answer, &guess);
+            history.push(Guess {
+                mask: correctness,
+                word: guess
+            })
+        }
+
+        None
+    }
 }
 
 
@@ -81,6 +101,26 @@ pub trait Guesser {
     fn guess(&mut self, history: &[Guess]) -> String;
 }
 
+// For testing purposes
+impl Guesser for fn(history: &[Guess]) -> String {
+    fn guess(&mut self, history: &[Guess]) -> String {
+        (*self)(history)
+    }
+}
+
+#[cfg(test)]
+macro_rules! guesser {
+    (|$history:ident| $impl:block) => {{
+        struct G;
+        impl $crate::Guesser for G {
+            fn guess(&mut self, $history: &[Guess]) -> String {
+                $impl
+            }
+        }
+        G
+    }};
+}
+
 #[cfg(test)]
 macro_rules! mask {
     (C) => {$crate::Correctness::Correct};
@@ -93,7 +133,7 @@ macro_rules! mask {
 
 #[cfg(test)]
 mod tests {
-    use crate::Correctness;
+    use crate::{Correctness, Wordle, Guess};
 
     macro_rules! check {
         (C) => {Correctness::Correct};
@@ -113,5 +153,12 @@ mod tests {
         assert_eq!(Correctness::compute("azzaz", "aaabb"), mask![C M W W W]);
         assert_eq!(Correctness::compute("kasph", "simba"), mask![M W W W M]);
         assert_eq!(Correctness::compute("baccc", "aaddd"), mask![W C W W W]);
+    }
+
+    #[test]
+    fn play() {
+        let w = Wordle::new();
+        let guesser = guesser!(|_history| { "right".to_string() });
+        assert_eq!(w.play("right", guesser), Some(1));
     }
 }
