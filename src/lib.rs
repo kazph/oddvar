@@ -77,9 +77,9 @@ impl Correctness {
                 continue;
             }
 
-            if answer.bytes().enumerate().any(|(i, a)| {
-                if a == g && !marked[i] {
-                    marked[i] = true;
+            if answer.bytes().zip(marked.iter_mut()).any(|(a, used)| {
+                if a == g && !*used {
+                    *used = true;
                     return true
                 }
                 return false;
