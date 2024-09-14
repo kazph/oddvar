@@ -1,26 +1,30 @@
 use std::{ borrow::Cow };
+use once_cell::sync::OnceCell;
 
 use crate::{Guesser, Guess, Correctness, DICTIONARY, Word};
 
+static INITIAL : OnceCell<Vec<(&'static Word, usize)>> = OnceCell::new();
 
 pub struct Naive {
-    remaining: Vec<(&'static Word, usize)>,
+    remaining: Cow<'static, Vec<(&'static Word, usize)>>,
 }
 
 impl Naive {
     pub fn new() -> Self {
         Naive {
-            remaining: Vec::from_iter(
-                DICTIONARY.lines().map(|line| {
-                    let (word, count) = line
-                        .split_once(" ")
-                        .expect("All lines should have a space between word and number of occurnces!");
-
-                    let count: usize = count.parse().expect("Count is a number");
-
-                    return (word.as_bytes().try_into().expect("Every dict word is five characters!"), count);
-                })
-            )
+            remaining: Cow::Borrowed(INITIAL.get_or_init(|| {
+                Vec::from_iter(
+                    DICTIONARY.lines().map(|line| {
+                        let (word, count) = line
+                            .split_once(" ")
+                            .expect("All lines should have a space between word and number of occurnces!");
+    
+                        let count: usize = count.parse().expect("Count is a number");
+    
+                        return (word.as_bytes().try_into().expect("Every dict word is five characters!"), count);
+                    })
+                )
+            }))
         }
     }
 }
@@ -36,7 +40,17 @@ impl Guesser for Naive {
     // The implmentation of the algorithm
     fn guess(&mut self, history: &[Guess]) -> Word {
         if let Some(last) = history.last() {
-            self.remaining.retain(|(word, _)| last.matches(word));
+            if matches!(self.remaining, Cow::Owned(_)) {
+                self.remaining.to_mut().retain(|(word, _)| last.matches(word));
+            }else {
+                self.remaining = Cow::Owned(
+                    self.remaining
+                        .iter()
+                        .filter(|(word, _)| last.matches(word))
+                        .copied()
+                        .collect()
+                )
+            }
         }
         
         if history.is_empty() {
@@ -46,7 +60,7 @@ impl Guesser for Naive {
         let remaining_count: usize = self.remaining.iter().map(|&(_, c)| c).sum();
 
         let mut best: Option<Candidate> = None;
-        for &(word, count) in &self.remaining {
+        for &(word, count) in &*self.remaining {
             
             let mut sum = 0.0;
             // Goodness = -sum_i p_i * log_2(p_i)
@@ -56,7 +70,7 @@ impl Guesser for Naive {
 
                 let mut in_pattern_total = 0;
 
-                for (candidate, count) in &self.remaining {
+                for (candidate, count) in &*self.remaining {
                     let g = Guess {
                         word: Cow::Borrowed(word),
                         mask: pattern,
