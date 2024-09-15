@@ -1,3 +1,4 @@
+use core::str;
 use std::{borrow::Cow, collections::HashSet};
 
 pub mod algorithms;
@@ -31,6 +32,8 @@ impl Wordle {
         for i in 1..=64 { 
             let guess = guesser.guess(&history);
 
+            // println!("Guessed: {:?}", str::from_utf8(&guess).unwrap());
+
             if guess == answer {
                 return Some(i);
             }
@@ -52,7 +55,7 @@ impl Wordle {
 }
 
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Correctness {
     Correct,    // Green
     Misplaced,  // Yellow
@@ -62,22 +65,13 @@ pub enum Correctness {
 impl Correctness {
 
     fn compute(answer: &Word, guess: &Word) -> [Self; 5] {
-        assert_eq!(answer.len(), 5);
-        assert_eq!(guess.len(), 5);
-
         let mut c = [Correctness::Wrong; 5];
         
         // Mark things as correct
+        let mut marked = [false; 5];
         for (i, (a, g)) in answer.iter().zip(guess.iter()).enumerate() {
             if a == g {
                 c[i] = Correctness::Correct;
-            }
-        }
-
-        // mark things as misplaced
-        let mut marked = [false; 5];
-        for (i, &c) in c.iter().enumerate() {
-            if c == Correctness::Correct {
                 marked[i] = true;
             }
         }
