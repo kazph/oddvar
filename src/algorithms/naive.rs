@@ -4,9 +4,11 @@ use once_cell::sync::OnceCell;
 use crate::{Guesser, Guess, Correctness, DICTIONARY, Word};
 
 static INITIAL : OnceCell<Vec<(&'static Word, usize)>> = OnceCell::new();
+static PATTERNS : OnceCell<Vec<[Correctness; 5]>> = OnceCell::new();
 
 pub struct Naive {
     remaining: Cow<'static, Vec<(&'static Word, usize)>>,
+    patterns: Cow<'static, Vec<[Correctness; 5]>>,
 }
 
 impl Naive {
@@ -24,7 +26,10 @@ impl Naive {
                         return (word.as_bytes().try_into().expect("Every dict word is five characters!"), count);
                     })
                 )
-            }))
+            })),
+            patterns: Cow::Borrowed(PATTERNS.get_or_init(|| {
+                Correctness::patterns().collect()
+            })),
         }
     }
 }
@@ -54,7 +59,10 @@ impl Guesser for Naive {
         }
         
         if history.is_empty() {
+            self.patterns = Cow::Borrowed(PATTERNS.get().unwrap());
             return *b"tares";
+        } else {
+            assert!(!self.patterns.is_empty())
         }
 
         let remaining_count: usize = self.remaining.iter().map(|&(_, c)| c).sum();
@@ -63,8 +71,8 @@ impl Guesser for Naive {
         for &(word, count) in &*self.remaining {
             
             let mut sum = 0.0;
-            // Goodness = -sum_i p_i * log_2(p_i)
-            for pattern in Correctness::patterns() {
+            let check_pattern = |pattern: &[Correctness; 5]| {
+                // Goodness = -sum_i p_i * log_2(p_i)
                 // If we guessed word (outer loop) and got pattern (inner loop);
                 // what is the uncertainty left?
 
@@ -73,7 +81,7 @@ impl Guesser for Naive {
                 for (candidate, count) in &*self.remaining {
                     let g = Guess {
                         word: Cow::Borrowed(word),
-                        mask: pattern,
+                        mask: *pattern,
                     };
 
                     if g.matches(candidate) {
@@ -82,12 +90,26 @@ impl Guesser for Naive {
                 }
                 
                 if in_pattern_total == 0 {
-                    continue;
+                    return false;
                 }
                 
                 // TODO: Sigmoid
                 let p_of_pattern = in_pattern_total as f64 / remaining_count as f64;
                 sum += p_of_pattern * p_of_pattern.log2();
+                
+                return true;
+            };
+
+            if matches!(self.patterns, Cow::Owned(_)) {
+                self.patterns.to_mut().retain(check_pattern);
+            } else {
+                self.patterns = Cow::Owned(
+                    self.patterns
+                        .iter()
+                        .copied()
+                        .filter(check_pattern)
+                        .collect()
+                    )
             }
 
 
