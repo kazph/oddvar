@@ -15,7 +15,7 @@ impl Naive {
     pub fn new() -> Self {
         Naive {
             remaining: Cow::Borrowed(INITIAL.get_or_init(|| {
-                Vec::from_iter(
+                let mut words = Vec::from_iter(
                     DICTIONARY.lines().map(|line| {
                         let (word, count) = line
                             .split_once(" ")
@@ -25,7 +25,10 @@ impl Naive {
     
                         return (word.as_bytes().try_into().expect("Every dict word is five characters!"), count);
                     })
-                )
+                );
+
+                words.sort_unstable_by_key(|&(_ , count)| std::cmp::Reverse(count));
+                return words;
             })),
             patterns: Cow::Borrowed(PATTERNS.get_or_init(|| {
                 Correctness::patterns().collect()
@@ -68,7 +71,9 @@ impl Guesser for Naive {
         let remaining_count: usize = self.remaining.iter().map(|&(_, c)| c).sum();
 
         let mut best: Option<Candidate> = None;
-        for &(word, count) in &*self.remaining {
+        let n = std::cmp::max(std::cmp::min(self.remaining.len() / 2, 128), 32);
+            
+        for &(word, count) in self.remaining.iter().take(n) {
             
             let mut sum = 0.0;
             let check_pattern = |pattern: &[Correctness; 5]| {
