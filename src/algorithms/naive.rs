@@ -90,7 +90,9 @@ impl Guesser for Naive {
                 sum += p_of_pattern * p_of_pattern.log2();
             }
 
-            let goodness = 0.0 - sum;
+
+            let p_word = count as f64 / remaining_count as f64;
+            let goodness = p_word * (0.0 - sum);
             
             if let Some(c) = best {
                 if goodness > c.goodness {
