@@ -2,6 +2,7 @@ const GAMES: &str = include_str!("./../resources/answers.txt");
 
 fn main() {
     let w = oddvar::Wordle::new();
+    println!("Word, Number of Attempts");
 
     for answer in GAMES.split_whitespace() {
         let answer_b: oddvar::Word = answer
@@ -11,7 +12,7 @@ fn main() {
         let guesser = oddvar::algorithms::Naive::new();
 
         if let Some(s) = w.play(answer_b, guesser) {
-            println!("Guessed {} in {}", answer, s);
+            println!("{}, {}", answer, s);
         } else {
             eprintln!("failed to guess!");
         }
