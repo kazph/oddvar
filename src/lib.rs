@@ -20,7 +20,7 @@ impl Wordle {
                     .as_bytes()
                     .try_into()
                     .expect("Every word should be 5 characters!")
-            }))
+            })),
         }
     }
 
@@ -28,14 +28,16 @@ impl Wordle {
         let mut history = Vec::new();
 
         // not limiting number of guesess to get full distribution in the tail
-        for i in 1..=64 { 
+        for i in 1..=64 {
             let guess = guesser.guess(&history);
 
             if guess == answer {
                 return Some(i);
             }
 
-            /*debug_*/assert!(self.dictonary.contains(&guess),
+            /*debug_*/
+            assert!(
+                self.dictonary.contains(&guess),
                 "guess '{}' is not in the dictonary!",
                 std::str::from_utf8(&guess).unwrap()
             );
@@ -51,22 +53,20 @@ impl Wordle {
     }
 }
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Correctness {
-    Correct,    // Green
-    Misplaced,  // Yellow
-    Wrong,      // Gray
+    Correct,   // Green
+    Misplaced, // Yellow
+    Wrong,     // Gray
 }
 
 impl Correctness {
-
     fn compute(answer: &Word, guess: &Word) -> [Self; 5] {
         assert_eq!(answer.len(), 5);
         assert_eq!(guess.len(), 5);
 
         let mut c = [Correctness::Wrong; 5];
-        
+
         // Mark things as correct
         for (i, (a, g)) in answer.iter().zip(guess.iter()).enumerate() {
             if a == g {
@@ -90,7 +90,7 @@ impl Correctness {
             if answer.iter().zip(marked.iter_mut()).any(|(a, used)| {
                 if a == g && !*used {
                     *used = true;
-                    return true
+                    return true;
                 }
                 return false;
             }) {
@@ -100,7 +100,6 @@ impl Correctness {
 
         return c;
     }
-
 
     pub fn patterns() -> impl Iterator<Item = [Self; 5]> {
         itertools::iproduct!(
@@ -124,7 +123,6 @@ impl Guess<'_> {
         Correctness::compute(word, &self.word) == self.mask
     }
 }
-
 
 pub trait Guesser {
     fn guess(&mut self, history: &[Guess]) -> Word;
@@ -162,15 +160,19 @@ macro_rules! mask {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Correctness, Wordle, Guess};
+    use crate::{Correctness, Guess, Wordle};
 
     macro_rules! check {
-        (C) => {Correctness::Correct};
-        (M) => {Correctness::Misplaced};
-        (W) => {Correctness::Wrong};
-        ([$(tt)+]) => [
-
-        ]
+        (C) => {
+            Correctness::Correct
+        };
+        (M) => {
+            Correctness::Misplaced
+        };
+        (W) => {
+            Correctness::Wrong
+        };
+        ([$(tt)+]) => {};
     }
 
     #[test]
